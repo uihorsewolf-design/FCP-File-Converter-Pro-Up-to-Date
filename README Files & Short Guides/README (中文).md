@@ -1,0 +1,121 @@
+# File Converter Pro (FCP)
+
+File Converter Pro 是一款 Windows 桌面应用，可在本地转换图像、视频、音频和 PDF 文件。文件不会上传到在线服务。
+
+## 制作者
+
+**作者：** B&B Coder  
+**项目：** FCP (File Converter Pro)
+
+## 功能
+
+- 将图像转换为 JPG、PNG、WEBP、HEIC、AVIF、PDF、ICO 和 SVG
+- 将视频转换为 MP4、WEBM、WMV 和 MKV
+- 将音频转换为 MP3、WAV、FLAC 和 OGG
+- 使用 Whisper 在本地将音频转录为 TXT 或 SRT
+- 从 PDF 文件中提取文本
+- 将多张图像合并为一个 PDF
+- 批量处理文件和文件夹
+- 更改输出分辨率
+- 为转换文件和下载内容设置输出文件夹
+- 将结果下载为 ZIP 压缩包
+- 使用 AES-256 密码保护 ZIP 文件
+- 多语言界面和首次启动指南
+- 浅色和深色主题
+- 使用 `F11` 的无边框全屏模式
+- 专用 GPU 检测和 Electron 原生 FFmpeg
+
+## 安装
+
+1. 打开 `release` 文件夹。
+2. 运行最新的安装程序，例如 `File Converter Pro Setup 1.0.2.exe`。
+3. 按照 Windows 安装步骤操作。
+4. 从开始菜单或快捷方式启动应用。
+
+请使用完整的 `.exe` 安装程序。`.blockmap` 文件和 `.__uninstaller.exe` 文件不是安装程序。
+安装后，Windows 会在桌面创建快捷方式。应用默认会自动以无边框全屏模式启动。已安装的文件位于 `%LOCALAPPDATA%\Programs\bestandsconverter`。
+
+## 使用方法
+
+1. 使用 `Browse Files` 添加文件，或使用 `Browse Folder` 添加文件夹。
+2. 也可以将文件拖入窗口。
+3. 为每个文件选择输出格式，并在需要时选择分辨率。
+4. 处理多个文件时可以使用批量操作。
+5. 选择 `Convert All`。
+6. 单独下载结果，或将全部结果下载为 ZIP 文件。
+
+在设置中指定输出文件夹后，单个下载和 ZIP 文件会自动保存到该文件夹，不会打开 Windows 保存对话框。未指定输出文件夹时，Windows 会询问每个下载文件的保存位置。
+
+### 音频转录
+
+1. 添加 WAV、MP3、M4A、OGG 或其他受支持的音频文件。
+2. 选择 `TXT` 生成纯文本，或选择 `SRT` 生成字幕。
+3. 选择 `Convert All` 并等待转录完成。
+4. 下载生成的转录文件。
+
+转录使用安装程序中包含的 Whisper 在本地运行。不需要 MSYS2、单独安装 Whisper 或互联网连接。WAV 文件会在转录前自动标准化。
+
+即使未设置输出文件夹，也可以进行转换。只有在设置了输出文件夹并且转换文件成功保存到该文件夹后，源文件才会被自动删除。
+
+为了获得最佳效果，请使用有效的源文件、合适的输出格式和适当的分辨率。大型媒体文件可能需要更长的处理时间。
+
+## GPU 加速
+
+应用启动时会检查视频适配器。如果只检测到集成 GPU，Electron 会关闭硬件加速。如果检测到独立 GPU，硬件加速会保持开启。对于支持的视频输出，NVIDIA GPU 可使用 `h264_nvenc`，AMD GPU 可使用 `h264_amf`。音频通过原生 FFmpeg 处理。
+
+## 快捷键
+
+- `F11`：切换全屏模式
+
+Electron 菜单栏已隐藏。应用默认以无边框全屏模式启动。
+
+## 首次启动
+
+首次启动时请选择语言。随后会以所选语言显示简短指南。语言选择会保存在本地，指南不会再次显示。
+
+## 开发
+
+要求：Windows 10 或更高版本、Node.js 18 或更高版本以及 npm。
+
+```powershell
+npm install
+npm rebuild ffmpeg-static --foreground-scripts
+npm run dev
+```
+
+其他命令：
+
+```powershell
+npm run lint
+npm run build
+npm run dist
+```
+
+安装程序会生成在 `release/File Converter Pro Setup <版本>.exe`。
+
+## 使用的库
+
+- React 和 React DOM：用户界面
+- TypeScript 和 Vite：开发和构建
+- Electron：桌面运行环境
+- electron-builder：Windows 安装程序
+- FFmpeg 和 `ffmpeg-static`：视频和音频转换
+- PDF.js 和 jsPDF：读取和创建 PDF
+- FFmpeg：HEIC/AVIF 支持
+- ImageTracerJS：SVG 转换
+- zip.js：ZIP 文件和 AES-256 加密
+- Tailwind CSS、PostCSS 和 Autoprefixer：样式
+- `concurrently`：同时启动 Vite 和 Electron
+
+## 技术与隐私
+
+渲染进程使用 `contextIsolation: true` 和 `nodeIntegration: false`。原生功能通过受限的 preload IPC API 提供。转换过程在本地完成。只有首次 npm 安装需要互联网。
+
+## 设置背景
+
+在主页点击明暗主题切换按钮旁边的齿轮图标。选择 `添加背景` 或 `更改背景`，然后选择图片。选择 `关闭背景` 可恢复默认背景。设置会保存到本地 `config.json`，并在每次启动时检查。为避免图片变形，请使用与屏幕宽高比相同的背景图片。
+
+## 致谢
+
+**制作者 / 作者：** B&B Coder  
+**项目：** File Converter Pro (FCP)
