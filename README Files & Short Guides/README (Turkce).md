@@ -18,8 +18,11 @@ File Converter Pro, görüntü, video, ses ve PDF dosyalarını yerel olarak dö
 - Dosya ve klasörleri toplu işleme
 - Çıkış çözünürlüğünü değiştirme
 - Dönüştürülen dosyalar ve indirmeler için çıkış klasörü belirleme
+- Çıkış klasörünü isteğe bağlı olarak şifreli kasaya dönüştürme
+- Kasa ZIP dosyalarını uygulama içinden açma, dışa aktarma ve silme
 - Sonuçları ZIP olarak indirme
 - ZIP dosyalarını AES-256 parolasıyla koruma
+- Kasa içeriğini AES-256-GCM ve Argon2id ile koruma
 - Çok dilli arayüz ve ilk açılış kılavuzu
 - Açık ve koyu tema
 - `F11` ile kenarlıksız tam ekran
@@ -45,6 +48,14 @@ Kurulumdan sonra Windows masaüstünde bir kısayol oluşturur. Uygulama varsay�
 6. Sonuçları ayrı ayrı veya ZIP olarak indirin.
 
 Ayarlar bölümünde bir çıkış klasörü belirlendiğinde, tek tek indirmeler ve ZIP dosyaları Windows kaydetme penceresi açılmadan otomatik olarak bu klasöre kaydedilir. Çıkış klasörü belirlenmezse Windows her indirmenin nereye kaydedileceğini sorar.
+
+### Şifreli kasa
+
+Ayarlar bölümünde bir çıkış klasörü seçin ve `Çıkış klasörünü kasa olarak ayarla` seçeneğini etkinleştirin. En az 10 karakterlik bir parola ve depolama kotası belirleyin. ZIP dışa aktarımı sırasında normal çıkış klasörü ile kasa arasında seçim yapabilirsiniz.
+
+Kasa, ZIP dosyalarını gizli `.fcp-vault` klasöründe şifreli `.fcpv` kapsayıcıları olarak saklar. İçerik ve yeni ZIP dosya adları AES-256-GCM ile korunur; Argon2id şifreleme anahtarını paroladan türetir. Windows Gezgini kapsayıcıları görebilir ancak okuyamaz veya çözemez. Dosyaları listelemek, dışa aktarmak veya silmek için Ayarlar bölümündeki `Kasayı aç` seçeneğini kullanın.
+
+Parola kaydedilmez. Parola olmadan şifreli dosyalar kurtarılamaz. Çıkış klasörünü kaldırmak kasa yapılandırmasını devre dışı bırakır, mevcut kasa verilerini silmez. Kota içerik miktarını sınırlar ancak Windows Gezgini'nde disk alanı ayırmaz.
 
 ### Ses transkripsiyonu
 

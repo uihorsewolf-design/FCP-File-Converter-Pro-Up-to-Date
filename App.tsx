@@ -148,6 +148,44 @@ const PasswordModal: React.FC<{ onConfirm: (password: string | null) => void; on
     );
 };
 
+const VaultSetupModal: React.FC<{ onConfirm: (password: string, quotaGb: number) => Promise<void>; onCancel: () => void }> = ({ onConfirm, onCancel }) => {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [quotaGb, setQuotaGb] = useState('10');
+  const [error, setError] = useState('');
+  const submit = async () => {
+    const quota = Number(quotaGb);
+    if (password.length < 10) return setError('Gebruik minimaal 10 tekens voor het kluiswachtwoord.');
+    if (password !== confirmPassword) return setError('De wachtwoorden komen niet overeen.');
+    if (!Number.isFinite(quota) || quota <= 0 || quota > 1024) return setError('Kies een quota tussen 0,1 en 1024 GB.');
+    setError('');
+    await onConfirm(password, quota);
+  };
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75">
+    <div className="w-full max-w-md space-y-4 rounded-lg bg-gray-200 p-8 shadow-xl dark:bg-gray-800">
+      <h2 className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">Kluis instellen</h2>
+      <p className="text-sm text-gray-600 dark:text-gray-300">Bestanden worden in het doelpad versleuteld opgeslagen. Windows Verkenner kan de inhoud niet openen.</p>
+      <label className="block text-sm font-medium">Kluiswachtwoord<input type="password" value={password} onChange={event => setPassword(event.target.value)} className="mt-1 w-full rounded-md border p-2 text-gray-900" autoFocus /></label>
+      <label className="block text-sm font-medium">Wachtwoord bevestigen<input type="password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} className="mt-1 w-full rounded-md border p-2 text-gray-900" /></label>
+      <label className="block text-sm font-medium">Maximale opslag (GB)<input type="number" min="0.1" max="1024" step="0.1" value={quotaGb} onChange={event => setQuotaGb(event.target.value)} className="mt-1 w-full rounded-md border p-2 text-gray-900" /></label>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="flex justify-end gap-3 pt-2"><button onClick={onCancel} className="rounded bg-gray-500 px-4 py-2 font-bold text-white">Annuleren</button><button onClick={submit} className="rounded bg-cyan-500 px-4 py-2 font-bold text-white">Kluis opslaan</button></div>
+    </div>
+  </div>;
+};
+
+const VaultPasswordModal: React.FC<{ onConfirm: (password: string) => void; onCancel: () => void }> = ({ onConfirm, onCancel }) => {
+  const [password, setPassword] = useState('');
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75">
+    <div className="w-full max-w-sm space-y-4 rounded-lg bg-gray-200 p-8 shadow-xl dark:bg-gray-800">
+      <h2 className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">Kluis ontgrendelen</h2>
+      <p className="text-sm text-gray-600 dark:text-gray-300">Voer het kluiswachtwoord in om deze zip versleuteld op te slaan.</p>
+      <input type="password" value={password} onChange={event => setPassword(event.target.value)} onKeyDown={event => event.key === 'Enter' && onConfirm(password)} className="w-full rounded-md border p-2 text-gray-900" autoFocus />
+      <div className="flex justify-end gap-3"><button onClick={onCancel} className="rounded bg-gray-500 px-4 py-2 font-bold text-white">Annuleren</button><button onClick={() => onConfirm(password)} className="rounded bg-cyan-500 px-4 py-2 font-bold text-white">Opslaan</button></div>
+    </div>
+  </div>;
+};
+
 const EncryptionInfoAlert: React.FC<{ onClose: () => void; lang: string }> = ({ onClose, lang }) => {
     return (
         <div className="fixed bottom-4 right-4 max-w-md w-full bg-gray-200 dark:bg-gray-800 border border-blue-500 rounded-lg shadow-lg p-4 z-50 animate-fade-in-up">
@@ -255,17 +293,22 @@ const App: React.FC = () => {
   const [isConverting, setIsConverting] = useState(false);
   const [convertedCount, setConvertedCount] = useState(0);
   const [totalToConvert, setTotalToConvert] = useState(0);
+  const [batchEtaSeconds, setBatchEtaSeconds] = useState<number | null>(null);
   const [isFfmpegReady, setIsFfmpegReady] = useState(false);
   const [isHeifReady, setIsHeifReady] = useState(false);
   const [isPdfReady, setIsPdfReady] = useState(false);
   const [isSvgReady, setIsSvgReady] = useState(false);
   const [zipFileName, setZipFileName] = useState('converted-files');
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
+  const [zipProgress, setZipProgress] = useState({ completed: 0, total: 0, currentFile: '' });
   const [bulkImageFormat, setBulkImageFormat] = useState('');
   const [bulkVideoFormat, setBulkVideoFormat] = useState('');
   const [bulkAudioFormat, setBulkAudioFormat] = useState('');
   const [isTraversing, setIsTraversing] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isVaultPasswordModalOpen, setIsVaultPasswordModalOpen] = useState(false);
+  const [vaultPasswordAction, setVaultPasswordAction] = useState<'save' | 'browse'>('save');
+  const [isVaultSetupModalOpen, setIsVaultSetupModalOpen] = useState(false);
   const [showEncryptionInfo, setShowEncryptionInfo] = useState(false);
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -280,6 +323,11 @@ const App: React.FC = () => {
   });
   const [currentView, setCurrentView] = useState<'home' | 'settings'>('home');
   const [outputDirectory, setOutputDirectory] = useState(() => localStorage.getItem('output-directory') || '');
+  const [vaultStatus, setVaultStatus] = useState<{ enabled: boolean; outputDirectory?: string; quotaBytes?: number }>({ enabled: false });
+  const [vaultFiles, setVaultFiles] = useState<Array<{ storageName: string; fileName: string; bytes: number; modifiedAt: number }>>([]);
+  const [vaultPassword, setVaultPassword] = useState<string | null>(null);
+  const [isVaultBrowserOpen, setIsVaultBrowserOpen] = useState(false);
+  const [zipDestination, setZipDestination] = useState<'folder' | 'vault'>('folder');
   const [deleteSources, setDeleteSources] = useState(() => localStorage.getItem('delete-sources') === 'true');
   const [wallpaper, setWallpaper] = useState<{ enabled: boolean; path: string | null; dataUrl: string | null }>({ enabled: false, path: null, dataUrl: null });
   const [showOnboarding, setShowOnboarding] = useState(() => localStorage.getItem('onboarding-complete') !== 'true');
@@ -291,6 +339,7 @@ const App: React.FC = () => {
   const ffmpegRef = useRef<any>(null);
   const ffmpegLoadingRef = useRef<boolean>(false);
   const lastProgressAtRef = useRef<number>(Date.now());
+  const batchStartedAtRef = useRef<number | null>(null);
   const MAX_CONCURRENT_CONVERSIONS = 4;
 
   // Pagination State
@@ -322,6 +371,10 @@ const App: React.FC = () => {
   }, [outputDirectory]);
 
   useEffect(() => {
+    (window as any).electronAPI?.getVaultStatus?.().then(setVaultStatus).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem('delete-sources', String(deleteSources));
   }, [deleteSources]);
 
@@ -350,6 +403,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!isConverting) {
       setIsStalled(false);
+      setBatchEtaSeconds(null);
       return;
     }
 
@@ -359,6 +413,22 @@ const App: React.FC = () => {
 
     return () => window.clearInterval(timer);
   }, [isConverting]);
+
+  useEffect(() => {
+    if (!isConverting || !batchStartedAtRef.current || convertedCount <= 0 || totalToConvert <= convertedCount) {
+      if (!isConverting || convertedCount <= 0) setBatchEtaSeconds(null);
+      return;
+    }
+
+    const updateEta = () => {
+      const elapsedSeconds = (Date.now() - batchStartedAtRef.current!) / 1000;
+      setBatchEtaSeconds(Math.max(0, Math.ceil((elapsedSeconds / convertedCount) * (totalToConvert - convertedCount))));
+    };
+
+    updateEta();
+    const timer = window.setInterval(updateEta, 1000);
+    return () => window.clearInterval(timer);
+  }, [convertedCount, isConverting, totalToConvert]);
 
   useEffect(() => {
     if (showOnboarding) return;
@@ -406,6 +476,59 @@ const App: React.FC = () => {
   const chooseOutputDirectory = async () => {
     const selectedPath = await (window as any).electronAPI?.chooseOutputDirectory?.();
     if (selectedPath) setOutputDirectory(selectedPath);
+  };
+
+  const createVault = async (password: string, quotaGb: number) => {
+    try {
+      const status = await (window as any).electronAPI.createVault({ outputDirectory, password, quotaGb });
+      setVaultStatus(status);
+      setIsVaultSetupModalOpen(false);
+      setZipDestination('vault');
+    } catch (error: any) {
+      alert(error?.message || 'De kluis kon niet worden ingesteld.');
+    }
+  };
+
+  const clearOutputDirectory = async () => {
+    if (vaultStatus.enabled) {
+      await (window as any).electronAPI.disableVault();
+      setVaultStatus({ enabled: false });
+    }
+    setOutputDirectory('');
+    setZipDestination('folder');
+    setVaultFiles([]);
+    setVaultPassword(null);
+  };
+
+  const unlockVault = async (password: string) => {
+    try {
+      const files = await (window as any).electronAPI.listVaultFiles({ password });
+      setVaultPassword(password);
+      setVaultFiles(files);
+      setIsVaultBrowserOpen(true);
+    } catch (error: any) {
+      alert(error?.message || 'Het kluiswachtwoord is onjuist of de kluis is beschadigd.');
+    }
+  };
+
+  const downloadVaultFile = async (file: { storageName: string; fileName: string }) => {
+    if (!vaultPassword) return;
+    try {
+      const result = await (window as any).electronAPI.readVaultFile({ storageName: file.storageName, password: vaultPassword });
+      await (window as any).electronAPI.saveFile({ data: result.data, fileName: result.fileName });
+    } catch (error: any) {
+      alert(error?.message || 'Het bestand kon niet uit de kluis worden gelezen.');
+    }
+  };
+
+  const deleteVaultFile = async (file: { storageName: string }) => {
+    if (!vaultPassword || !window.confirm('Dit bestand permanent uit de kluis verwijderen?')) return;
+    try {
+      await (window as any).electronAPI.deleteVaultFile({ storageName: file.storageName, password: vaultPassword });
+      setVaultFiles(previous => previous.filter(item => item.storageName !== file.storageName));
+    } catch (error: any) {
+      alert(error?.message || 'Het bestand kon niet uit de kluis worden verwijderd.');
+    }
   };
 
   // Preload Everything on mount (Desktop App Mode)
@@ -534,8 +657,10 @@ const App: React.FC = () => {
     if (deleteSources && outputDirectory && !window.confirm(t('delete_sources_warning', language))) return;
     setIsConverting(true);
     setConvertedCount(0);
+    setBatchEtaSeconds(null);
     setIsStalled(false);
     lastProgressAtRef.current = Date.now();
+    batchStartedAtRef.current = Date.now();
   
     // Special handling for combining images into a single PDF
     const pdfImageFiles = files.filter(f => {
@@ -547,6 +672,9 @@ const App: React.FC = () => {
     const total = (combineToPdf && pdfImageFiles.length > 1 ? 1 : 0) + filesToConvert.length;
     setTotalToConvert(total);
     let currentConverted = 0;
+    const conversionTimings: Array<{ fileName: string; seconds: number; status: 'success' | 'error' }> = [];
+    const combinedConversionStartedAt = performance.now();
+    let combinedConversionSucceeded = false;
 
     if (combineToPdf && pdfImageFiles.length > 1) {
       try {
@@ -597,6 +725,7 @@ const App: React.FC = () => {
 
         // Mark original files as success
         pdfImageFiles.forEach(f => updateFileState(f.id, { status: 'success', progress: 100, convertedFileUrl: '#' })); // Use # to indicate it's part of a combo
+        combinedConversionSucceeded = true;
         currentConverted++;
         setConvertedCount(currentConverted);
       } catch(err: any) {
@@ -605,11 +734,15 @@ const App: React.FC = () => {
          setConvertedCount(currentConverted);
       }
     }
+    if (combineToPdf && pdfImageFiles.length > 1) {
+      conversionTimings.push({ fileName: 'combined_document.pdf', seconds: (performance.now() - combinedConversionStartedAt) / 1000, status: combinedConversionSucceeded ? 'success' : 'error' });
+    }
   
     let completedCount = currentConverted;
     const queue = [...filesToConvert];
 
     const convertSingleFile = async (fileItem: ConversionFile) => {
+      const conversionStartedAt = performance.now();
       updateFileState(fileItem.id, { status: 'reading', readProgress: 0, progress: 0, error: null });
 
       const { id, file, targetFormat } = fileItem;
@@ -676,7 +809,7 @@ const App: React.FC = () => {
         }
 
         const url = URL.createObjectURL(convertedBlob);
-        if (outputDirectory && (window as any).electronAPI?.writeOutputFile) {
+        if (outputDirectory && !vaultStatus.enabled && (window as any).electronAPI?.writeOutputFile) {
           const relativePath = fileItem.relativePath || file.name;
           const sourceName = relativePath.replace(/\\/g, '/');
           const dotIndex = sourceName.lastIndexOf('.');
@@ -686,9 +819,11 @@ const App: React.FC = () => {
           if (deleteSources && sourcePath) await electronApi.deleteSourceFile(sourcePath);
         }
         updateFileState(id, { convertedFileUrl: url, status: 'success', progress: 100 });
+        conversionTimings.push({ fileName: file.name, seconds: (performance.now() - conversionStartedAt) / 1000, status: 'success' });
       } catch (err: any) {
         const message = String(err);
         updateFileState(id, { error: message, status: 'error' });
+        conversionTimings.push({ fileName: file.name, seconds: (performance.now() - conversionStartedAt) / 1000, status: 'error' });
       } finally {
         if (stagedPath) await electronApi.cleanupStagedFile(stagedPath).catch(() => undefined);
         completedCount += 1;
@@ -705,7 +840,28 @@ const App: React.FC = () => {
     });
 
     await Promise.all(workers);
+    const finishedAt = new Date();
+    const totalSeconds = conversionTimings.reduce((sum, item) => sum + item.seconds, 0);
+    const successfulTimings = conversionTimings.filter(item => item.status === 'success');
+    const report = [
+      'File Converter Pro performance report',
+      `Started: ${new Date(batchStartedAtRef.current || Date.now()).toISOString()}`,
+      `Finished: ${finishedAt.toISOString()}`,
+      `Files: ${conversionTimings.length}`,
+      `Successful: ${successfulTimings.length}`,
+      `Failed: ${conversionTimings.length - successfulTimings.length}`,
+      `Average seconds per file: ${conversionTimings.length ? (totalSeconds / conversionTimings.length).toFixed(3) : '0.000'}`,
+      '',
+      ...conversionTimings.map(item => `${item.status}\t${item.seconds.toFixed(3)} s\t${item.fileName}`),
+      ''
+    ].join('\n');
+    try {
+      await (window as any).electronAPI?.writeDebugReport?.({ outputDirectory, report });
+    } catch (error) {
+      console.warn('Could not write debug.txt', error);
+    }
     setIsConverting(false);
+    batchStartedAtRef.current = null;
   };
 
   const retryFile = useCallback((id: string) => {
@@ -793,11 +949,12 @@ const App: React.FC = () => {
     setIsPasswordModalOpen(true);
   };
 
-  const createAndDownloadZip = async (password: string | null) => {
+  const createAndDownloadZip = async (password: string | null, destination: 'folder' | 'vault' = 'folder') => {
     setIsPasswordModalOpen(false);
     if (successfulConversions.length < 1) return;
 
     setIsDownloadingZip(true);
+    setZipProgress({ completed: 0, total: successfulConversions.length, currentFile: '' });
     setShowEncryptionInfo(false);
 
     let zipWriter: any = null;
@@ -806,9 +963,11 @@ const App: React.FC = () => {
         zipWriter = new ZipWriter(new BlobWriter("application/zip"));
         const usedPaths = new Set<string>();
 
-        for (const fileItem of successfulConversions) {
+        for (let fileIndex = 0; fileIndex < successfulConversions.length; fileIndex++) {
+          const fileItem = successfulConversions[fileIndex];
             const path = fileItem.relativePath || fileItem.file.name;
             const normalizedPath = path.replace(/\\/g, '/');
+          setZipProgress({ completed: fileIndex, total: successfulConversions.length, currentFile: fileItem.file.name });
             
             const lastDotIndex = normalizedPath.lastIndexOf('.');
             const pathWithoutExt = lastDotIndex === -1 ? normalizedPath : normalizedPath.substring(0, lastDotIndex);
@@ -829,48 +988,45 @@ const App: React.FC = () => {
                  counter++;
             }
 
-            let added = false;
-            let retryCount = 0;
-            const maxRetries = 10; 
+            try {
+              const res = await fetch(fileItem.convertedFileUrl!);
+              if (!res.ok) throw new Error(`Fetch failed with status ${res.status}`);
+              const blob = await res.blob();
+              const blobReader = new BlobReader(blob);
 
-            while (!added && retryCount < maxRetries) {
-                try {
-                    const res = await fetch(fileItem.convertedFileUrl!);
-                    if (!res.ok) throw new Error("Fetch failed");
-                    const blob = await res.blob();
-                    const blobReader = new BlobReader(blob);
+              const options: any = {
+                onprogress: (loaded: number, total: number) => {
+                  if (!total) return;
+                  setZipProgress({
+                    completed: fileIndex + loaded / total,
+                    total: successfulConversions.length,
+                    currentFile: fileItem.file.name,
+                  });
+                },
+              };
+              if (password) {
+                options.password = password;
+                options.encryption = "AES-256";
+              }
 
-                    const options: any = {};
-                    if (password) {
-                        options.password = password;
-                        options.encryption = "AES-256";
-                    }
-
-                    await zipWriter.add(finalFileName, blobReader, options);
-                    usedPaths.add(finalFileName);
-                    added = true;
-                } catch (error: any) {
-                     console.warn(`Failed to add ${finalFileName} to zip (attempt ${retryCount + 1}):`, error);
-                     
-                     const dotIndex = baseFileName.lastIndexOf('.');
-                     if (dotIndex !== -1) {
-                         finalFileName = `${baseFileName.substring(0, dotIndex)} (${counter})${baseFileName.substring(dotIndex)}`;
-                     } else {
-                         finalFileName = `${baseFileName} (${counter})`;
-                     }
-                     counter++;
-                     retryCount++;
-                }
+              await zipWriter.add(finalFileName, blobReader, options);
+              usedPaths.add(finalFileName);
+            } catch (error: any) {
+              console.error(`Failed to add ${fileItem.file.name} to zip:`, error);
             }
-            if (!added) {
-                console.error(`Failed to add ${fileItem.file.name} to zip after multiple retries. Skipping.`);
-            }
+            setZipProgress({ completed: fileIndex + 1, total: successfulConversions.length, currentFile: fileItem.file.name });
         }
 
+        setZipProgress({ completed: successfulConversions.length, total: successfulConversions.length, currentFile: 'ZIP afronden...' });
         const zipBlob = await zipWriter.close();
         zipWriter = null; 
+        setZipProgress({ completed: successfulConversions.length, total: successfulConversions.length, currentFile: '' });
         
-        await saveDownload(zipBlob, `${zipFileName || 'converted-files'}.zip`);
+        if (destination === 'vault') {
+          await (window as any).electronAPI.saveVaultFile({ data: await zipBlob.arrayBuffer(), fileName: `${zipFileName || 'converted-files'}.zip`, password: password || '' });
+        } else {
+          await saveDownload(zipBlob, `${zipFileName || 'converted-files'}.zip`);
+        }
 
         if (password) {
             setShowEncryptionInfo(true);
@@ -884,8 +1040,22 @@ const App: React.FC = () => {
              try { await zipWriter.close(); } catch(e: any) { /* ignore */ }
         }
         setIsDownloadingZip(false);
+        setZipProgress({ completed: 0, total: 0, currentFile: '' });
     }
   };
+
+    const startZipExport = () => {
+        if (zipDestination === 'vault') {
+          setVaultPasswordAction('save');
+          setIsVaultPasswordModalOpen(true);
+        }
+      else openPasswordModal();
+    };
+
+    const openVaultBrowser = () => {
+      setVaultPasswordAction('browse');
+      setIsVaultPasswordModalOpen(true);
+    };
 
   const isAnyHeicOrAvif = useMemo(() => files.some(f => (f.targetFormat === ConversionTarget.HEIC || f.targetFormat === ConversionTarget.AVIF) && f.status === 'pending'), [files]);
   const isAnyPdf = useMemo(() => files.some(f => f.targetFormat === ConversionTarget.PDF && f.status === 'pending'), [files]);
@@ -896,7 +1066,8 @@ const App: React.FC = () => {
   
   const getConvertAllButtonText = () => {
     if (isConverting) {
-      return `${t('converting_status', language)} (${convertedCount}/${totalToConvert})`;
+      const eta = batchEtaSeconds === null ? '' : ` - ${formatEta(batchEtaSeconds)} remaining`;
+      return `${t('converting_status', language)} (${convertedCount}/${totalToConvert})${eta}`;
     }
     return t('convert_all', language);
   };
@@ -1032,7 +1203,9 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-      {isPasswordModalOpen && <PasswordModal onConfirm={createAndDownloadZip} onCancel={() => setIsPasswordModalOpen(false)} lang={language} />}
+      {isPasswordModalOpen && <PasswordModal onConfirm={password => createAndDownloadZip(password, 'folder')} onCancel={() => setIsPasswordModalOpen(false)} lang={language} />}
+      {isVaultSetupModalOpen && <VaultSetupModal onConfirm={createVault} onCancel={() => setIsVaultSetupModalOpen(false)} />}
+      {isVaultPasswordModalOpen && <VaultPasswordModal onConfirm={password => { setIsVaultPasswordModalOpen(false); if (vaultPasswordAction === 'browse') unlockVault(password); else createAndDownloadZip(password, 'vault').catch(error => alert(error?.message || 'Opslaan in de kluis is mislukt.')); }} onCancel={() => setIsVaultPasswordModalOpen(false)} />}
       {showEncryptionInfo && <EncryptionInfoAlert onClose={() => setShowEncryptionInfo(false)} lang={language} />}
       <div
         className="w-full max-w-4xl rounded-lg shadow-xl p-6 sm:p-8 space-y-6 border border-white/20 backdrop-blur-sm transition-all duration-200"
@@ -1066,8 +1239,11 @@ const App: React.FC = () => {
               <p className="mt-1 break-all text-sm text-gray-600 dark:text-gray-300">{outputDirectory || t('output_folder_help', language)}</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button onClick={chooseOutputDirectory} className="rounded-md bg-cyan-500 px-4 py-2 font-bold text-white hover:bg-cyan-600">{t('choose_output_folder', language)}</button>
-                {outputDirectory && <button onClick={() => setOutputDirectory('')} className="rounded-md bg-gray-500 px-4 py-2 font-bold text-white hover:bg-gray-600">{t('clear_all', language)}</button>}
+                {outputDirectory && <button onClick={clearOutputDirectory} className="rounded-md bg-gray-500 px-4 py-2 font-bold text-white hover:bg-gray-600">{t('clear_all', language)}</button>}
               </div>
+              {outputDirectory && <label className="mt-5 flex items-start gap-3 text-sm text-gray-700 dark:text-gray-200"><input type="checkbox" checked={vaultStatus.enabled} onChange={event => event.target.checked ? setIsVaultSetupModalOpen(true) : clearOutputDirectory()} className="mt-1 h-4 w-4 accent-cyan-500" /><span><span className="font-semibold">Doelpad instellen als kluis</span><span className="mt-1 block text-xs text-gray-600 dark:text-gray-300">Versleutelde bestanden worden alleen vanuit deze app opgeslagen.</span></span></label>}
+              {vaultStatus.enabled && <div className="mt-5 rounded-md border border-cyan-400/50 bg-cyan-50 p-4 dark:bg-cyan-950/30"><div className="flex flex-wrap items-center justify-between gap-3"><div><h4 className="font-semibold text-cyan-800 dark:text-cyan-200">Kluisbestanden</h4><p className="text-xs text-gray-600 dark:text-gray-300">Open, exporteer of verwijder bestanden vanuit de app.</p></div><button onClick={openVaultBrowser} className="rounded-md bg-cyan-600 px-4 py-2 font-bold text-white hover:bg-cyan-700">Kluis openen</button></div></div>}
+              {isVaultBrowserOpen && vaultPassword && <div className="mt-4 space-y-2 rounded-md border border-gray-300 bg-white/70 p-3 dark:border-gray-600 dark:bg-gray-900/30"><div className="flex items-center justify-between"><h4 className="font-semibold">Ontgrendelde kluis</h4><button onClick={() => { setIsVaultBrowserOpen(false); setVaultPassword(null); setVaultFiles([]); }} className="rounded bg-gray-500 px-3 py-1 text-sm font-bold text-white">Sluiten</button></div>{vaultFiles.length === 0 ? <p className="text-sm text-gray-600 dark:text-gray-300">De kluis is leeg.</p> : vaultFiles.map(file => <div key={file.storageName} className="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-200 p-2 dark:border-gray-700"><div><div className="font-medium">{file.fileName}</div><div className="text-xs text-gray-500">{formatBytes(file.bytes)}</div></div><div className="flex gap-2"><button onClick={() => downloadVaultFile(file)} className="rounded bg-cyan-600 px-3 py-1 text-sm font-bold text-white">Exporteren</button><button onClick={() => deleteVaultFile(file)} className="rounded bg-red-600 px-3 py-1 text-sm font-bold text-white">Verwijderen</button></div></div>)}</div>}
               <label className="mt-5 flex items-start gap-3 text-sm text-gray-700 dark:text-gray-200">
                 <input type="checkbox" checked={deleteSources} onChange={event => setDeleteSources(event.target.checked)} className="mt-1 h-4 w-4 accent-cyan-500" />
                 <span><span className="font-semibold">{t('delete_sources', language)}</span><span className="mt-1 block text-xs text-amber-700 dark:text-amber-300">{t('delete_sources_warning', language)}</span></span>
@@ -1132,7 +1308,7 @@ const App: React.FC = () => {
               <div className="bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg space-y-4 border border-gray-300 dark:border-gray-600">
                 <h3 className="text-lg font-semibold text-cyan-700 dark:text-cyan-300">
                   {t('bulk_actions', language)}
-                  {isConverting && <span className="ml-2 text-sm font-normal text-gray-500">({convertedCount}/{totalToConvert})</span>}
+                  {isConverting && <span className="ml-2 text-sm font-normal text-gray-500">({convertedCount}/{totalToConvert}{batchEtaSeconds !== null ? ` - ~${formatEta(batchEtaSeconds)} remaining` : ''})</span>}
                 </h3>
                 <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {hasImageInQueue && (
@@ -1214,8 +1390,9 @@ const App: React.FC = () => {
                       className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     />
                   </div>
+                  {vaultStatus.enabled && <select value={zipDestination} onChange={event => setZipDestination(event.target.value as 'folder' | 'vault')} className="h-[42px] rounded-md border border-gray-300 bg-white px-3 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"><option value="vault">Opslaan in kluis</option><option value="folder">Opslaan in doelmap</option></select>}
                   <button 
-                    onClick={openPasswordModal} 
+                    onClick={startZipExport} 
                     disabled={isDownloadingZip} 
                     className="w-full sm:w-auto bg-blue-500 text-white font-bold py-2 px-6 rounded hover:bg-blue-600 disabled:bg-gray-500 transition h-[42px] flex items-center justify-center space-x-2"
                   >
@@ -1237,6 +1414,18 @@ const App: React.FC = () => {
                     )}
                   </button>
                 </div>
+                {isDownloadingZip && (
+                  <div className="space-y-1" aria-live="polite">
+                    <div className="flex justify-between gap-3 text-xs text-gray-600 dark:text-gray-300">
+                      <span>Bestanden toevoegen aan ZIP: {Math.floor(zipProgress.completed)}/{zipProgress.total}</span>
+                      <span>{zipProgress.total > 0 ? `${Math.round((zipProgress.completed / zipProgress.total) * 100)}%` : '0%'}</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-300 dark:bg-gray-600">
+                      <div className="h-2 rounded-full bg-blue-500 transition-all duration-200" style={{ width: `${zipProgress.total > 0 ? Math.min(100, (zipProgress.completed / zipProgress.total) * 100) : 0}%` }} />
+                    </div>
+                    {zipProgress.currentFile && <p className="truncate text-xs text-gray-500 dark:text-gray-400">{zipProgress.currentFile}</p>}
+                  </div>
+                )}
               </div>
             )}
             

@@ -18,8 +18,11 @@ File Converter Pro est une application de bureau Windows qui convertit localemen
 - Traiter des fichiers et des dossiers par lots
 - Modifier la résolution de sortie
 - Définir un dossier de sortie pour les fichiers convertis et les téléchargements
+- Transformer éventuellement le dossier de sortie en coffre chiffré
+- Ouvrir, exporter et supprimer les ZIP du coffre depuis l'application
 - Télécharger les résultats dans une archive ZIP
 - Protéger une archive ZIP avec un mot de passe AES-256
+- Protéger le contenu du coffre avec AES-256-GCM et Argon2id
 - Interface multilingue et guide au premier démarrage
 - Thèmes clair et sombre
 - Plein écran sans bordure avec `F11`
@@ -45,6 +48,14 @@ Après l'installation, Windows crée un raccourci sur le bureau. L'application d
 6. Téléchargez les résultats séparément ou sous forme d'archive ZIP.
 
 Lorsqu'un dossier de sortie est défini dans les paramètres, les téléchargements individuels et les archives ZIP y sont enregistrés automatiquement sans ouvrir la boîte de dialogue d'enregistrement de Windows. Sans dossier de sortie, Windows demande où enregistrer chaque téléchargement.
+
+### Coffre chiffré
+
+Dans les paramètres, choisissez un dossier de sortie et activez `Définir le dossier de sortie comme coffre`. Choisissez un mot de passe d'au moins 10 caractères et une limite de stockage. Lors de l'export ZIP, vous pouvez choisir entre le dossier de sortie normal et le coffre.
+
+Le coffre stocke les ZIP comme conteneurs `.fcpv` chiffrés dans un dossier caché `.fcp-vault`. Le contenu et les nouveaux noms de fichiers ZIP sont protégés par AES-256-GCM ; Argon2id dérive la clé à partir du mot de passe. L'Explorateur Windows peut voir les conteneurs, mais ne peut pas les lire ni les déchiffrer. Utilisez `Ouvrir le coffre` pour lister, exporter ou supprimer les fichiers.
+
+Le mot de passe n'est jamais enregistré. Sans lui, les fichiers chiffrés ne peuvent pas être récupérés. Supprimer le dossier de sortie désactive la configuration du coffre, mais ne supprime pas les données existantes. La limite contrôle le contenu du coffre sans réserver d'espace disque dans l'Explorateur Windows.
 
 ### Transcription audio
 

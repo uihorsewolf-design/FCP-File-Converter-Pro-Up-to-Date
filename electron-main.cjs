@@ -1,14 +1,16 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const fs = require('node:fs/promises');
+const crypto = require('node:crypto');
 const { randomUUID } = require('node:crypto');
 const { spawn, spawnSync } = require('node:child_process');
 const path = require('node:path');
 const os = require('node:os');
 const ffmpegPath = require('ffmpeg-static');
+const { hashRaw } = require('@node-rs/argon2');
 
 const isDevelopment = !app.isPackaged;
 const developmentUrl = 'http://localhost:3000';
-const updateRepository = 'uihorsewolf-design/File-Converter-Pro-1';
+const updateRepository = 'uihorsewolf-design/FCP-File-Converter-Pro-Up-to-Date';
 const iconPath = path.join(__dirname, 'assets', 'icon.ico');
 const whisperRuntimePath = app.isPackaged
   ? path.join(process.resourcesPath, 'whisper-runtime')
@@ -65,7 +67,138 @@ function createWindow() {
 }
 
 const wallpaperConfigPath = path.join(app.getPath('userData'), 'config.json');
+const vaultConfigPath = path.join(app.getPath('userData'), 'vault-config.json');
 let activeConversionProcess = null;
+
+const VAULT_MAGIC = 'FCPVAULT1';
+const VAULT_VERSION = 1;
+const VAULT_KDF_OPTIONS = { algorithm: 2, memoryCost: 65536, timeCost: 3, parallelism: 1, outputLen: 32 };
+
+async function readVaultConfig() {
+  try {
+    return JSON.parse(await fs.readFile(vaultConfigPath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+async function deriveVaultKey(password, salt) {
+  if (typeof password !== 'string' || password.length < 10) throw new Error('Vault password must contain at least 10 characters.');
+  return hashRaw(password, { ...VAULT_KDF_OPTIONS, salt: Buffer.from(salt, 'base64') });
+}
+
+function encryptVaultPayload(data, key) {
+  const nonce = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, nonce);
+  const encrypted = Buffer.concat([cipher.update(Buffer.from(data)), cipher.final()]);
+  return { magic: VAULT_MAGIC, version: VAULT_VERSION, nonce: nonce.toString('base64'), tag: cipher.getAuthTag().toString('base64'), data: encrypted.toString('base64') };
+}
+
+function decryptVaultPayload(container, key) {
+  if (container?.magic !== VAULT_MAGIC || container.version !== VAULT_VERSION) throw new Error('Unsupported vault container.');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(container.nonce, 'base64'));
+  decipher.setAuthTag(Buffer.from(container.tag, 'base64'));
+  return Buffer.concat([decipher.update(Buffer.from(container.data, 'base64')), decipher.final()]);
+}
+
+ipcMain.handle('fcp:get-vault-status', async () => {
+  const config = await readVaultConfig();
+  return config ? { enabled: true, outputDirectory: config.outputDirectory, quotaBytes: config.quotaBytes } : { enabled: false };
+});
+
+ipcMain.handle('fcp:create-vault', async (_event, options) => {
+  const requestedDirectory = String(options?.outputDirectory || '').trim();
+  if (!requestedDirectory) throw new Error('Choose an output directory before creating a vault.');
+  const outputDirectory = path.resolve(requestedDirectory);
+  const password = String(options?.password || '');
+  const quotaGb = Number(options?.quotaGb);
+  if (!outputDirectory || !Number.isFinite(quotaGb) || quotaGb <= 0 || quotaGb > 1024) throw new Error('Invalid vault settings.');
+  const salt = crypto.randomBytes(16).toString('base64');
+  const key = await deriveVaultKey(password, salt);
+  const verifier = encryptVaultPayload(Buffer.from('FCP vault verifier'), key);
+  await fs.mkdir(path.join(outputDirectory, '.fcp-vault'), { recursive: true });
+  const quotaBytes = Math.floor(quotaGb * 1024 ** 3);
+  await fs.writeFile(vaultConfigPath, JSON.stringify({ version: VAULT_VERSION, outputDirectory, quotaBytes, salt, verifier }), 'utf8');
+  return { enabled: true, outputDirectory, quotaBytes };
+});
+
+ipcMain.handle('fcp:disable-vault', async () => {
+  await fs.rm(vaultConfigPath, { force: true });
+  return true;
+});
+
+ipcMain.handle('fcp:save-vault-file', async (_event, options) => {
+  const config = await readVaultConfig();
+  if (!config) throw new Error('No vault is configured.');
+  const key = await deriveVaultKey(String(options?.password || ''), config.salt);
+  decryptVaultPayload(config.verifier, key);
+  const data = Buffer.from(options?.data || []);
+  const fileName = path.basename(String(options?.fileName || 'converted-files.zip'));
+  const vaultDirectory = path.join(config.outputDirectory, '.fcp-vault');
+  await fs.mkdir(vaultDirectory, { recursive: true });
+  const entries = (await fs.readdir(vaultDirectory)).filter(fileName => fileName.endsWith('.fcpv'));
+  const currentSize = (await Promise.all(entries.map(async fileName => (await fs.stat(path.join(vaultDirectory, fileName))).size))).reduce((sum, size) => sum + size, 0);
+  const payload = Buffer.from(JSON.stringify({ fileName, data: data.toString('base64') }), 'utf8');
+  const containerData = Buffer.from(JSON.stringify(encryptVaultPayload(payload, key)), 'utf8');
+  if (currentSize + containerData.length > config.quotaBytes) throw new Error('The vault quota has been reached.');
+  const storagePath = path.join(vaultDirectory, `${randomUUID()}.fcpv`);
+  await fs.writeFile(storagePath, containerData, { flag: 'wx' });
+  return { storagePath, bytes: data.length };
+});
+
+ipcMain.handle('fcp:list-vault-files', async (_event, options) => {
+  const config = await readVaultConfig();
+  if (!config) throw new Error('No vault is configured.');
+  const key = await deriveVaultKey(String(options?.password || ''), config.salt);
+  decryptVaultPayload(config.verifier, key);
+  const vaultDirectory = path.join(config.outputDirectory, '.fcp-vault');
+  await fs.mkdir(vaultDirectory, { recursive: true });
+  const fileNames = (await fs.readdir(vaultDirectory)).filter(fileName => fileName.endsWith('.fcpv'));
+  const files = await Promise.all(fileNames.map(async storageName => {
+    const stats = await fs.stat(path.join(vaultDirectory, storageName));
+    let fileName = storageName;
+    try {
+      const container = JSON.parse(await fs.readFile(path.join(vaultDirectory, storageName), 'utf8'));
+      const payload = decryptVaultPayload(container, key);
+      const metadata = JSON.parse(payload.toString('utf8'));
+      if (metadata?.fileName) fileName = path.basename(metadata.fileName);
+    } catch {
+      // Keep legacy containers visible; they can still be opened by read-vault-file.
+    }
+    return { storageName, fileName, bytes: stats.size, modifiedAt: stats.mtimeMs };
+  }));
+  return files.sort((left, right) => right.modifiedAt - left.modifiedAt);
+});
+
+ipcMain.handle('fcp:read-vault-file', async (_event, options) => {
+  const config = await readVaultConfig();
+  if (!config) throw new Error('No vault is configured.');
+  const key = await deriveVaultKey(String(options?.password || ''), config.salt);
+  decryptVaultPayload(config.verifier, key);
+  const storageName = path.basename(String(options?.storageName || ''));
+  if (!storageName.endsWith('.fcpv')) throw new Error('Invalid vault file.');
+  const storagePath = path.join(config.outputDirectory, '.fcp-vault', storageName);
+  const container = JSON.parse(await fs.readFile(storagePath, 'utf8'));
+  const payload = decryptVaultPayload(container, key);
+  try {
+    const metadata = JSON.parse(payload.toString('utf8'));
+    if (metadata?.data && metadata.fileName) return { fileName: path.basename(metadata.fileName), data: Buffer.from(metadata.data, 'base64') };
+  } catch {
+    // Legacy format stores the raw zip bytes directly in the encrypted payload.
+  }
+  return { fileName: 'converted-files.zip', data: payload };
+});
+
+ipcMain.handle('fcp:delete-vault-file', async (_event, options) => {
+  const config = await readVaultConfig();
+  if (!config) throw new Error('No vault is configured.');
+  const key = await deriveVaultKey(String(options?.password || ''), config.salt);
+  decryptVaultPayload(config.verifier, key);
+  const storageName = path.basename(String(options?.storageName || ''));
+  if (!storageName.endsWith('.fcpv')) throw new Error('Invalid vault file.');
+  await fs.rm(path.join(config.outputDirectory, '.fcp-vault', storageName), { force: true });
+  return true;
+});
 
 async function readWallpaperConfig() {
   try {
@@ -241,6 +374,14 @@ ipcMain.handle('fcp:write-output-file', async (_event, filePath, data) => {
   await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
   await fs.writeFile(resolvedPath, Buffer.from(data));
   return resolvedPath;
+});
+ipcMain.handle('fcp:write-debug-report', async (_event, options) => {
+  const requestedDirectory = String(options?.outputDirectory || '').trim();
+  const reportDirectory = requestedDirectory ? path.resolve(requestedDirectory) : app.getPath('userData');
+  const reportPath = path.join(reportDirectory, 'debug.txt');
+  await fs.mkdir(reportDirectory, { recursive: true });
+  await fs.writeFile(reportPath, String(options?.report || ''), 'utf8');
+  return reportPath;
 });
 ipcMain.handle('fcp:stage-file', async (_event, fileData, fileName) => {
   const stagingDirectory = path.join(app.getPath('temp'), 'fcp-staging');

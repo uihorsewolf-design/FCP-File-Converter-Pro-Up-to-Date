@@ -18,8 +18,11 @@ File Converter Pro ist eine Windows-Desktopanwendung zum lokalen Konvertieren vo
 - Dateien und Ordner stapelweise verarbeiten
 - Ausgabeauflösung ändern
 - Einen Ausgabeordner für konvertierte Dateien und Downloads festlegen
+- Den Ausgabeordner optional als verschlüsselten Tresor festlegen
+- Tresor-ZIP-Dateien in der App öffnen, exportieren und löschen
 - Ergebnisse als ZIP-Datei herunterladen
 - ZIP-Dateien mit AES-256-Passwort schützen
+- Tresorinhalte mit AES-256-GCM und Argon2id schützen
 - Mehrsprachige Oberfläche und Anleitung beim ersten Start
 - Helles und dunkles Design
 - Randloser Vollbildmodus mit `F11`
@@ -45,6 +48,14 @@ Nach der Installation erstellt Windows eine Desktopverknüpfung. Die App startet
 6. Laden Sie die Ergebnisse einzeln oder als ZIP-Datei herunter.
 
 Wenn in den Einstellungen ein Ausgabeordner festgelegt ist, werden einzelne Downloads und ZIP-Dateien automatisch dort gespeichert, ohne dass der Windows-Speicherdialog geöffnet wird. Ohne Ausgabeordner fragt Windows, wo jeder Download gespeichert werden soll.
+
+### Verschlüsselter Tresor
+
+Wählen Sie in den Einstellungen einen Ausgabeordner und aktivieren Sie `Ausgabeordner als Tresor festlegen`. Verwenden Sie ein Passwort mit mindestens 10 Zeichen und legen Sie ein Speicherlimit fest. Beim ZIP-Export können Sie anschließend zwischen Ausgabeordner und Tresor wählen.
+
+Der Tresor speichert ZIP-Dateien als verschlüsselte `.fcpv`-Container in einem verborgenen `.fcp-vault`-Ordner. Inhalt und neue ZIP-Dateinamen werden mit AES-256-GCM geschützt; Argon2id leitet den Schlüssel aus dem Passwort ab. Windows Explorer kann die Container sehen, aber nicht lesen oder entschlüsseln. Mit `Tresor öffnen` können Sie Dateien auflisten, exportieren oder löschen.
+
+Das Passwort wird nicht gespeichert. Ohne Passwort können verschlüsselte Dateien nicht wiederhergestellt werden. Das Entfernen des Ausgabeordners deaktiviert die Tresorkonfiguration, löscht aber keine vorhandenen Tresordaten. Das Speicherlimit begrenzt die Inhalte, reserviert jedoch keinen freien Speicherplatz in Windows Explorer.
 
 ### Audiotranskription
 

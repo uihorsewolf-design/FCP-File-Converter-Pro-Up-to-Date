@@ -11,7 +11,32 @@ This project uses the structure of [Keep a Changelog](https://keepachangelog.com
 - Further optimization of the conversion speed
 - Expansion of GPU support for more codecs
 - Further improvement of the user interface
-- Automatic updates for the desktop app
+- Automatic background installation of updates after explicit user confirmation
+
+## [1.0.5.1] - 2026-09-07
+
+### Added
+
+- Live estimated remaining time for the complete conversion batch
+- `debug.txt` performance report with per-file durations and the average seconds per file
+
+## [1.0.5] - 2026-09-07
+
+### Added
+
+- Optional encrypted vault storage linked to the configured output folder
+- AES-256-GCM encryption with Argon2id password-based key derivation
+- Encrypted vault containers with per-file authentication tags and random storage names
+- Vault browser inside the app for listing, exporting and deleting stored ZIP files
+- Encrypted original ZIP filenames stored inside new vault containers
+- Release update checking against the current FCP GitHub repository
+
+### Changed
+
+- ZIP export can target either the normal output folder or the encrypted vault
+- Individual converted files are not written as plaintext to the output folder while a vault is active
+- Vault passwords must contain at least 10 characters and are never stored in local storage
+- Existing legacy `.fcpv` containers remain readable as unnamed encrypted ZIP files
 
 ## [1.0.4] - 2026-09-07
 
@@ -192,6 +217,7 @@ This project uses the structure of [Keep a Changelog](https://keepachangelog.com
 - Basic configuration for Electron-builder
 - Local preload and main process structure
 
-[Unreleased]: https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY/compare/v0.0.3...HEAD
-[1.0.4]: https://github.com/uihorsewolf-design/File-Converter-Pro-1/releases/tag/v1.0.4
-[0.0.3]: https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY/releases/tag/v0.0.3
+[Unreleased]: https://github.com/uihorsewolf-design/FCP-File-Converter-Pro-Up-to-Date/compare/v1.0.4...HEAD
+[1.0.5]: https://github.com/uihorsewolf-design/FCP-File-Converter-Pro-Up-to-Date/releases/tag/v1.0.5
+[1.0.4]: https://github.com/uihorsewolf-design/FCP-File-Converter-Pro-Up-to-Date/releases/tag/v1.0.4
+[0.0.3]: https://github.com/uihorsewolf-design/FCP-File-Converter-Pro-Up-to-Date/releases/tag/v0.0.3

@@ -19,6 +19,16 @@ Tam `.exe` yükleyicisini kullanın. `.blockmap` ve `.__uninstaller.exe` dosyala
 
 Ayarlar bölümünde bir çıkış klasörü belirlenmişse indirmeler Windows kaydetme penceresi açılmadan otomatik olarak buraya kaydedilir. Çıkış klasörü yoksa Windows kayıt konumunu sorar. Dönüştürme işlemi çıkış klasörü olmadan da çalışır, ancak kaynak dosyalar otomatik olarak silinmez.
 
+## Şifreli kasa
+
+1. Ayarlar bölümünü açın ve bir çıkış klasörü seçin.
+2. `Çıkış klasörünü kasa olarak ayarla` seçeneğini etkinleştirin.
+3. En az 10 karakterlik bir parola ve depolama kotası belirleyin.
+4. ZIP dışa aktarımı sırasında hedef olarak kasayı seçin.
+5. ZIP dosyalarını dışa aktarmak veya silmek için Ayarlar bölümünden kasayı açın.
+
+Kasa dosyaları şifreli `.fcpv` kapsayıcılarıdır. Windows Gezgini içeriklerini okuyamaz. Parola kaydedilmez; parola olmadan dosyalar kurtarılamaz.
+
 Dosyaları pencereye sürükleyerek de ekleyebilirsiniz.
 
 ## Ses transkripsiyonu

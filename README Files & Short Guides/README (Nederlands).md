@@ -18,8 +18,11 @@ File Converter Pro is een Windows-desktopapp waarmee je afbeeldingen, video, aud
 - Bestanden en mappen tegelijk verwerken
 - Resolutie aanpassen
 - Een uitvoermap instellen voor geconverteerde bestanden en downloads
+- De uitvoermap optioneel instellen als versleutelde kluis
+- Kluis-ZIP-bestanden vanuit de app openen, exporteren en verwijderen
 - Resultaten als ZIP downloaden
 - ZIP beveiligen met AES-256-wachtwoord
+- Kluisinhoud beveiligen met AES-256-GCM en Argon2id
 - Meertalige interface en eerste-start uitleg
 - Donkere en lichte weergave
 - Borderless fullscreen met `F11`
@@ -45,6 +48,14 @@ Na de installatie maakt Windows een snelkoppeling op het bureaublad aan. De app 
 6. Download de resultaten afzonderlijk of als ZIP.
 
 Als je in de instellingen een uitvoermap instelt, worden losse downloads en ZIP-bestanden daar automatisch opgeslagen zonder dat Windows Verkenner opent. Zonder uitvoermap vraagt Windows waar elk downloadbestand moet worden opgeslagen.
+
+### Versleutelde kluis
+
+Kies in de instellingen een uitvoermap en vink `Doelpad instellen als kluis` aan. Kies een wachtwoord van minimaal 10 tekens en een opslagquota. Bij ZIP-export kun je daarna kiezen tussen de normale uitvoermap en de kluis.
+
+De kluis bewaart ZIP-bestanden als versleutelde `.fcpv`-containers in een verborgen map `.fcp-vault`. De inhoud en nieuwe ZIP-bestandsnamen worden beveiligd met AES-256-GCM; Argon2id leidt de encryptiesleutel af uit het wachtwoord. Windows Verkenner kan de containers wel zien, maar niet lezen of ontsleutelen. Gebruik `Kluis openen` in de instellingen om bestanden te bekijken, te exporteren of te verwijderen.
+
+Het wachtwoord wordt nooit opgeslagen. Zonder wachtwoord kunnen versleutelde bestanden niet worden hersteld. Het verwijderen van de uitvoermap schakelt de kluisconfiguratie uit, maar verwijdert bestaande kluisdata niet. De quota beperkt de opgeslagen data en reserveert geen vrije schijfruimte in Windows Verkenner.
 
 ### Audio transcriberen
 
@@ -108,6 +119,7 @@ De installer wordt gemaakt in `release/File Converter Pro Setup <versie>.exe`.
 - FFmpeg: HEIC/AVIF
 - ImageTracerJS: SVG-conversie
 - zip.js: ZIP en AES-256
+- `@node-rs/argon2`: Argon2id-sleutelafleiding voor de kluis
 - Tailwind CSS, PostCSS en Autoprefixer: styling
 - `concurrently`: Vite en Electron tegelijk starten
 

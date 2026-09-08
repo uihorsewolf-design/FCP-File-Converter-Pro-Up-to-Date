@@ -19,6 +19,16 @@
 
 Heb je in de instellingen een uitvoermap ingesteld, dan worden downloads automatisch daar opgeslagen zonder Windows-opslagvenster. Zonder uitvoermap vraagt Windows waar het bestand moet worden opgeslagen. Converteren zonder uitvoermap kan gewoon; bronbestanden worden dan niet automatisch verwijderd.
 
+## Versleutelde kluis
+
+1. Open de instellingen en kies een uitvoermap.
+2. Vink `Doelpad instellen als kluis` aan.
+3. Stel een wachtwoord van minimaal 10 tekens en een quota in.
+4. Kies bij ZIP-export de kluis als bestemming.
+5. Gebruik `Kluis openen` in de instellingen om ZIP-bestanden te exporteren of te verwijderen.
+
+Kluisbestanden zijn versleutelde `.fcpv`-containers. Windows Verkenner kan de inhoud niet lezen. Het wachtwoord wordt niet opgeslagen; zonder wachtwoord kunnen de bestanden niet worden hersteld.
+
 ## Audio transcriberen
 
 Voeg een audiobestand toe, kies `TXT` voor tekst of `SRT` voor ondertitels en klik op `Convert All`. Whisper zit in de installer en draait lokaal; MSYS2 of internet is niet nodig. WAV-bestanden worden automatisch genormaliseerd.

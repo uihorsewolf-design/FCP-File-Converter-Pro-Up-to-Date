@@ -18,14 +18,17 @@ It is built with Electron, React, Vite and FFmpeg, allowing it to handle a wide 
 - Merge multiple images into a single PDF
 - Process files and folders in batches
 - Choose a local output folder for converted files
+- Optionally turn the output folder into an encrypted vault
+- Store ZIP exports in the vault and open, export or delete them from inside the app
 - Retry failed conversions individually or as a group
 - Show native FFmpeg conversion progress and estimated remaining time
 - Stage input files in temporary local storage during conversion
 - Optionally delete source files only after successful output
 - Save individual downloads and ZIP archives directly to the configured output folder
-- Check GitHub Releases for available Windows updates
+- Check the current FCP GitHub Releases page for available Windows updates
 - Download results as ZIP archives
 - Protect ZIP archives with AES-256 encryption
+- Protect vault contents with AES-256-GCM and Argon2id-based key derivation
 - Multilingual interface and first-run guide
 - Light and dark mode
 - Borderless fullscreen support with F11
@@ -70,7 +73,7 @@ The generated installer is written to the `release/` folder. It includes Whisper
 
 ### Download the Windows app
 
-End users do not need Node.js or the project source code. Download the latest Windows installer from the [GitHub Releases](https://github.com/uihorsewolf-design/File-Converter-Pro-1/releases) page and run the `.exe` installer.
+End users do not need Node.js or the project source code. Download the latest Windows installer from the [FCP GitHub Releases](https://github.com/uihorsewolf-design/FCP-File-Converter-Pro-Up-to-Date/releases) page and run the `.exe` installer.
 
 ### Build from source
 
@@ -82,8 +85,10 @@ Developers can install the dependencies and build a new Windows installer locall
 - Select the source files or folders.
 - Choose the desired output format.
 - Optionally choose an output folder in Settings.
+- Optionally enable `Set output folder as vault` in Settings. Choose a vault password of at least 10 characters and a quota.
 - Start the conversion and monitor the per-file progress and estimated remaining time.
-- Download individual results or package successful results in a ZIP archive.
+- Download individual results or package successful results in a ZIP archive. When the vault is enabled, choose between the output folder and the vault.
+- Open the vault from Settings to list stored ZIP files, export them to a normal location, or delete them.
 - Retry individual failed conversions or all failed conversions.
 
 When an output folder is configured, individual downloads and ZIP archives are saved there automatically without opening a Windows save dialog. Without an output folder, Windows asks where each download should be saved.
@@ -92,7 +97,15 @@ The optional source-file deletion setting is disabled by default. When enabled, 
 
 Conversions can also run without an output folder. In that case, source files are not deleted automatically, even if the deletion setting is enabled.
 
-The app checks the [GitHub Releases](https://github.com/uihorsewolf-design/File-Converter-Pro-1/releases) page for a newer Windows installer when an internet connection is available. Updates are never downloaded or installed without user confirmation.
+The app checks the [FCP GitHub Releases](https://github.com/uihorsewolf-design/FCP-File-Converter-Pro-Up-to-Date/releases) page for a newer Windows installer when an internet connection is available. Updates are never downloaded or installed without user confirmation.
+
+### Encrypted vault
+
+The vault stores each ZIP as an encrypted `.fcpv` container in a hidden `.fcp-vault` folder under the configured output path. File contents and new ZIP filenames are encrypted with AES-256-GCM. The vault key is derived from the password with Argon2id. Windows Explorer can see the container files but cannot read or decrypt them.
+
+To use it, choose an output folder in Settings, enable `Set output folder as vault`, set a password of at least 10 characters and choose the maximum quota. Use `Open vault` in Settings to unlock the vault. From there, stored ZIP files can be exported or deleted. Removing the output folder disables the vault configuration; it does not delete existing vault data.
+
+The password is never saved by the app. Losing the password means the encrypted files cannot be recovered. The quota limits vault contents but does not pre-allocate free disk space in Windows Explorer.
 
 For audio transcription, add an audio file, choose `TXT` or `SRT`, and select `Convert All`. WAV input is automatically normalized before Whisper processes it.
 

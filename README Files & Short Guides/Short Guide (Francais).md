@@ -19,6 +19,16 @@ Utilisez l'installateur `.exe` complet. Les fichiers `.blockmap` et `.__uninstal
 
 Lorsqu'un dossier de sortie est défini dans les paramètres, les téléchargements y sont enregistrés automatiquement sans ouvrir la boîte de dialogue d'enregistrement de Windows. Sans dossier de sortie, Windows demande l'emplacement d'enregistrement. La conversion reste possible sans dossier de sortie, mais les fichiers source ne sont pas supprimés automatiquement.
 
+## Coffre chiffré
+
+1. Ouvrez les paramètres et choisissez un dossier de sortie.
+2. Activez `Définir le dossier de sortie comme coffre`.
+3. Choisissez un mot de passe d'au moins 10 caractères et une limite de stockage.
+4. Lors de l'export ZIP, choisissez le coffre comme destination.
+5. Ouvrez le coffre dans les paramètres pour exporter ou supprimer les ZIP.
+
+Les fichiers du coffre sont des conteneurs `.fcpv` chiffrés. L'Explorateur Windows ne peut pas lire leur contenu. Le mot de passe n'est pas enregistré ; sans lui, les fichiers ne peuvent pas être récupérés.
+
 Vous pouvez également glisser les fichiers dans la fenêtre.
 
 ## Transcription audio

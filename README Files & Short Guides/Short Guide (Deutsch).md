@@ -19,6 +19,16 @@ Verwenden Sie die vollständige `.exe`-Datei. `.blockmap` und `.__uninstaller.ex
 
 Wenn in den Einstellungen ein Ausgabeordner festgelegt ist, werden Downloads automatisch dort gespeichert, ohne dass der Windows-Speicherdialog geöffnet wird. Ohne Ausgabeordner fragt Windows nach dem Speicherort. Die Konvertierung funktioniert auch ohne Ausgabeordner, Quelldateien werden dann jedoch nicht automatisch gelöscht.
 
+## Verschlüsselter Tresor
+
+1. Öffnen Sie die Einstellungen und wählen Sie einen Ausgabeordner.
+2. Aktivieren Sie `Ausgabeordner als Tresor festlegen`.
+3. Legen Sie ein Passwort mit mindestens 10 Zeichen und ein Speicherlimit fest.
+4. Wählen Sie beim ZIP-Export den Tresor als Ziel.
+5. Öffnen Sie den Tresor in den Einstellungen, um ZIP-Dateien zu exportieren oder zu löschen.
+
+Tresordateien sind verschlüsselte `.fcpv`-Container. Windows Explorer kann ihren Inhalt nicht lesen. Das Passwort wird nicht gespeichert; ohne Passwort können die Dateien nicht wiederhergestellt werden.
+
 Sie können Dateien auch in das Fenster ziehen.
 
 ## Audiotranskription

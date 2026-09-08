@@ -18,8 +18,11 @@ File Converter Pro is a Windows desktop application for converting image, video,
 - Process files and folders in batches
 - Change output resolution
 - Set an output folder for converted files and downloads
+- Optionally turn the output folder into an encrypted vault
+- Open, export and delete vault ZIP files from inside the app
 - Download results as a ZIP archive
 - Protect ZIP archives with AES-256 encryption
+- Protect vault contents with AES-256-GCM and Argon2id
 - Multilingual interface and first-run guide
 - Light and dark themes
 - Borderless fullscreen with `F11`
@@ -45,6 +48,14 @@ After installation, Windows creates a desktop shortcut. The app starts automatic
 6. Download results individually or as a ZIP archive.
 
 When an output folder is configured in Settings, individual downloads and ZIP archives are saved there automatically without opening the Windows save dialog. Without an output folder, Windows asks where each download should be saved.
+
+### Encrypted vault
+
+In Settings, choose an output folder and enable `Set output folder as vault`. Choose a password of at least 10 characters and a storage quota. ZIP export then lets you choose between the normal output folder and the vault.
+
+The vault stores ZIP files as encrypted `.fcpv` containers in a hidden `.fcp-vault` folder. Contents and new ZIP filenames are protected with AES-256-GCM; Argon2id derives the encryption key from the password. Windows Explorer can see the container files but cannot read them. Use `Open vault` in Settings to list, export or delete stored files.
+
+The password is never stored. Without it, encrypted files cannot be recovered. Removing the output folder disables the vault configuration but does not delete existing vault data. The quota limits stored data and does not reserve free disk space in Windows Explorer.
 
 ### Audio transcription
 
@@ -108,6 +119,7 @@ The installer is created at `release/File Converter Pro Setup <version>.exe`.
 - FFmpeg: HEIC/AVIF support
 - ImageTracerJS: SVG conversion
 - zip.js: ZIP archives and AES-256 encryption
+- `@node-rs/argon2`: Argon2id key derivation for the vault
 - Tailwind CSS, PostCSS and Autoprefixer: styling
 - `concurrently`: starts Vite and Electron together
 

@@ -19,6 +19,16 @@ Use the complete `.exe` installer. The `.blockmap` and `.__uninstaller.exe` file
 
 When an output folder is configured in Settings, downloads are saved there automatically without opening the Windows save dialog. Without an output folder, Windows asks where to save the file. Conversion still works without an output folder, but source files are not deleted automatically.
 
+## Encrypted vault
+
+1. Open Settings and choose an output folder.
+2. Enable `Set output folder as vault`.
+3. Set a password of at least 10 characters and choose a quota.
+4. During ZIP export, choose the vault as the destination.
+5. Use `Open vault` in Settings to export or delete stored ZIP files.
+
+Vault files are encrypted `.fcpv` containers. Windows Explorer cannot read their contents. The password is not stored; without it, the files cannot be recovered.
+
 You can also drag files into the window.
 
 ## Audio transcription

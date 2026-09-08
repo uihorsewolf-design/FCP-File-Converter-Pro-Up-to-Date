@@ -44,6 +44,13 @@ declare global {
       cleanupStagedFile: (filePath: string) => Promise<boolean>;
       deleteSourceFile: (filePath: string) => Promise<boolean>;
       saveFile: (options: any) => Promise<string | null>;
+      getVaultStatus: () => Promise<{ enabled: boolean; outputDirectory?: string; quotaBytes?: number }>;
+      createVault: (options: { outputDirectory: string; password: string; quotaGb: number }) => Promise<{ enabled: boolean; outputDirectory: string; quotaBytes: number }>;
+      disableVault: () => Promise<boolean>;
+      saveVaultFile: (options: { data: ArrayBuffer; fileName: string; password: string }) => Promise<{ storagePath: string; bytes: number }>;
+      listVaultFiles: (options: { password: string }) => Promise<Array<{ storageName: string; fileName: string; bytes: number; modifiedAt: number }>>;
+      readVaultFile: (options: { storageName: string; password: string }) => Promise<{ fileName: string; data: ArrayBuffer }>;
+      deleteVaultFile: (options: { storageName: string; password: string }) => Promise<boolean>;
     };
   }
 }
