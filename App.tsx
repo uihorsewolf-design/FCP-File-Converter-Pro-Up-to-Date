@@ -1020,6 +1020,7 @@ const App: React.FC = () => {
         setZipProgress({ completed: successfulConversions.length, total: successfulConversions.length, currentFile: 'ZIP afronden...' });
         const zipBlob = await zipWriter.close();
         zipWriter = null; 
+        if (!zipBlob || zipBlob.size === 0) throw new Error('The ZIP file is empty.');
         setZipProgress({ completed: successfulConversions.length, total: successfulConversions.length, currentFile: '' });
         
         if (destination === 'vault') {
@@ -1033,8 +1034,9 @@ const App: React.FC = () => {
         }
 
     } catch (err: any) {
-        console.error("Error creating ZIP file", err);
-        alert("An error occurred while creating the ZIP file. Check console for details.");
+      const message = err?.message || String(err);
+      console.error("Error creating ZIP file", err);
+      alert(`An error occurred while creating the ZIP file: ${message}`);
     } finally {
         if (zipWriter) {
              try { await zipWriter.close(); } catch(e: any) { /* ignore */ }

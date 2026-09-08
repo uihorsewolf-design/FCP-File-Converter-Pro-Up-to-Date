@@ -132,7 +132,13 @@ ipcMain.handle('fcp:save-vault-file', async (_event, options) => {
   if (!config) throw new Error('No vault is configured.');
   const key = await deriveVaultKey(String(options?.password || ''), config.salt);
   decryptVaultPayload(config.verifier, key);
-  const data = Buffer.from(options?.data || []);
+  const rawData = options?.data;
+  const data = Buffer.isBuffer(rawData)
+    ? rawData
+    : rawData instanceof ArrayBuffer
+      ? Buffer.from(rawData)
+      : Buffer.from(rawData?.buffer || rawData || []);
+  if (data.length === 0) throw new Error('The ZIP file is empty.');
   const fileName = path.basename(String(options?.fileName || 'converted-files.zip'));
   const vaultDirectory = path.join(config.outputDirectory, '.fcp-vault');
   await fs.mkdir(vaultDirectory, { recursive: true });
@@ -142,7 +148,14 @@ ipcMain.handle('fcp:save-vault-file', async (_event, options) => {
   const containerData = Buffer.from(JSON.stringify(encryptVaultPayload(payload, key)), 'utf8');
   if (currentSize + containerData.length > config.quotaBytes) throw new Error('The vault quota has been reached.');
   const storagePath = path.join(vaultDirectory, `${randomUUID()}.fcpv`);
-  await fs.writeFile(storagePath, containerData, { flag: 'wx' });
+  const temporaryPath = `${storagePath}.tmp`;
+  try {
+    await fs.writeFile(temporaryPath, containerData, { flag: 'wx' });
+    await fs.rename(temporaryPath, storagePath);
+  } catch (error) {
+    await fs.rm(temporaryPath, { force: true }).catch(() => undefined);
+    throw new Error(`Could not save the ZIP in the vault: ${error?.message || error}`);
+  }
   return { storagePath, bytes: data.length };
 });
 
