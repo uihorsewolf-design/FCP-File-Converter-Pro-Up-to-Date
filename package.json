@@ -34,7 +34,7 @@
     "whisper-node": "^1.1.1"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
+    "@types/node": "^26.5.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.5.4",
     "concurrently": "^10.0.5",
